@@ -67,39 +67,93 @@ Enjoy writing in your clean editor!`,
 ];
 
 export default function App() {
-  const [notes, setNotes] = useState(INITIAL_NOTES);
-  const [activeNoteId, setActiveNoteId] = useState('welcome');
+  // ── localStorage persistence ──────────────────────────────────────────────
+  // Each piece of state uses a lazy initializer: read from localStorage once
+  // on mount, falling back to sensible defaults for first-time visitors.
+
+  const [notes, setNotes] = useState(() => {
+    try {
+      const saved = localStorage.getItem('nova-notes-data');
+      return saved ? JSON.parse(saved) : INITIAL_NOTES;
+    } catch {
+      return INITIAL_NOTES;
+    }
+  });
+
+  const [activeNoteId, setActiveNoteId] = useState(() => {
+    return localStorage.getItem('nova-notes-activeId') || 'welcome';
+  });
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState(null);
-  
-  // Library collection & Sort configuration state
-  const [activeCollection, setActiveCollection] = useState('all');
-  const [sortOption, setSortOption] = useState('updated');
-  const [theme, setTheme] = useState('slate');
-  
+
+  const [activeCollection, setActiveCollection] = useState(() => {
+    return localStorage.getItem('nova-notes-collection') || 'all';
+  });
+
+  const [sortOption, setSortOption] = useState(() => {
+    return localStorage.getItem('nova-notes-sort') || 'updated';
+  });
+
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('nova-notes-theme') || 'slate';
+  });
+
   // Modals & Save states
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isNoteSwitcherOpen, setIsNoteSwitcherOpen] = useState(false);
   const [saveStatus, setSaveStatus] = useState('saved');
-  
+
   // Note version history state: { [noteId]: [{ timestamp, title, body }] }
-  const [noteHistory, setNoteHistory] = useState({
-    'welcome': [
-      { 
-        timestamp: Date.now() - 3600000 * 3, 
-        title: 'Initial Note Idea 💭', 
-        body: 'Welcome to your premium note-taking space. Start typing!' 
-      },
-      { 
-        timestamp: Date.now() - 3600000 * 2, 
-        title: 'Welcome to NovaNotes 🚀', 
-        body: 'Welcome to your premium, distraction-free note-taking workspace!' 
-      }
-    ]
+  const [noteHistory, setNoteHistory] = useState(() => {
+    try {
+      const saved = localStorage.getItem('nova-notes-history');
+      return saved ? JSON.parse(saved) : {
+        'welcome': [
+          {
+            timestamp: Date.now() - 3600000 * 3,
+            title: 'Initial Note Idea 💭',
+            body: 'Welcome to your premium note-taking space. Start typing!'
+          },
+          {
+            timestamp: Date.now() - 3600000 * 2,
+            title: 'Welcome to NovaNotes 🚀',
+            body: 'Welcome to your premium, distraction-free note-taking workspace!'
+          }
+        ]
+      };
+    } catch {
+      return {};
+    }
   });
 
   const saveTimeoutRef = useRef(null);
   const historyTimerRef = useRef(null);
+
+  // ── Persist to localStorage on every relevant state change ───────────────
+  useEffect(() => {
+    try { localStorage.setItem('nova-notes-data', JSON.stringify(notes)); } catch { /* quota exceeded */ }
+  }, [notes]);
+
+  useEffect(() => {
+    try { localStorage.setItem('nova-notes-history', JSON.stringify(noteHistory)); } catch { /* quota exceeded */ }
+  }, [noteHistory]);
+
+  useEffect(() => {
+    localStorage.setItem('nova-notes-activeId', activeNoteId ?? '');
+  }, [activeNoteId]);
+
+  useEffect(() => {
+    localStorage.setItem('nova-notes-theme', theme);
+  }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem('nova-notes-sort', sortOption);
+  }, [sortOption]);
+
+  useEffect(() => {
+    localStorage.setItem('nova-notes-collection', activeCollection);
+  }, [activeCollection]);
 
   // Sync theme class with body element
   useEffect(() => {
